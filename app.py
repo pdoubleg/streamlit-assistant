@@ -26,6 +26,7 @@ st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password")
 if api_key:
     openai.api_key = api_key
+    client = OpenAI() 
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
@@ -43,7 +44,7 @@ st.session_state.prev_assistant = selected_assistant
 assistant_id = assistant_dict[selected_assistant]
 
 # Initialize the OpenAI client (ensure to set your API key in the sidebar within the app)
-client = OpenAI()
+# client = OpenAI() 
 
 # Initialize session state variables for file IDs and chat control
 if "file_id_list" not in st.session_state:
