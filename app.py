@@ -27,7 +27,7 @@ api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password")
 if not api_key:
     st.warning('Please input an api key')
     st.stop()
-st.success('Thank you for inputting a name.')
+st.success('Thank you for inputting an api key!')
 openai.api_key = api_key
 client = openai
 
