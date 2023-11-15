@@ -24,9 +24,9 @@ assistant_dict = {
 # Create a sidebar for API key configuration and additional features
 st.sidebar.header("Configuration")
 api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password")
-if api_key:
+if api_key is not None:
     openai.api_key = api_key
-    client = OpenAI() 
+    client = openai
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
