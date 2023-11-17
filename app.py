@@ -3,7 +3,8 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import pdfkit
-from weasyprint import HTML
+import html2text
+import io
 import time
 
 from openai import OpenAI
@@ -55,11 +56,11 @@ if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
 
 # Define functions for scraping, converting text to PDF, and uploading to OpenAI
-def scrape_website(url):
-    """Scrape text from a website URL."""
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
-    return soup.get_text()
+# def scrape_website(url):
+#     """Scrape text from a website URL."""
+#     response = requests.get(url)
+#     soup = BeautifulSoup(response.text, "html.parser")
+#     return soup.get_text()
 
 # def text_to_pdf(text, filename):
 #     """Convert text content to a PDF file."""
@@ -68,15 +69,29 @@ def scrape_website(url):
 #     pdfkit.from_string(text, filename, configuration=config)
 #     return filename
 
-def text_to_pdf(text, filename):
-    """Convert text content to a PDF file."""
-    HTML(string=text).write_pdf(filename)
-    return filename
+def scrape_website(url):
+    """Scrape text from a website URL and convert to markdown."""
+    response = requests.get(url)
+    html_converter = html2text.HTML2Text()
+    html_converter.ignore_links = True
+    markdown_text = html_converter.handle(response.text)
+    return markdown_text
 
-def upload_to_openai(filepath):
-    """Upload a file to OpenAI and return its file ID."""
-    with open(filepath, "rb") as file:
-        response = openai.files.create(file=file.read(), purpose="assistants")
+# def text_to_pdf(text, filename):
+#     """Convert text content to a PDF file."""
+#     HTML(string=text).write_pdf(filename)
+#     return filename
+
+# def upload_to_openai(filepath):
+#     """Upload a file to OpenAI and return its file ID."""
+#     with open(filepath, "rb") as file:
+#         response = openai.files.create(file=file.read(), purpose="assistants")
+#     return response.id
+
+def upload_to_openai(markdown_text):
+    """Upload a markdown text to OpenAI and return its file ID."""
+    bytes_like_object = io.BytesIO(markdown_text.encode('utf-8'))
+    response = openai.files.create(file=bytes_like_object.read(), purpose="assistants")
     return response.id
 
 # Additional features in the sidebar for web scraping and file uploading
