@@ -27,9 +27,9 @@ api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password")
 if not api_key:
     st.warning('Please input an api key')
     st.stop()
-st.success('Thank you for inputting an api key!')
-openai.api_key = st.secrets.OPENAI_API_KEY
-client = openai
+    st.success('Thank you for inputting an api key!')
+# openai.api_key = st.secrets.OPENAI_API_KEY
+client = OpenAI(api_key = st.secrets.OPENAI_API_KEY)
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
@@ -164,7 +164,7 @@ def process_message_with_citations(message):
 
 # Main chat interface setup
 st.title("OpenAI Assistant")
-st.write("This is a simple chat application that uses OpenAI's Assistants API to generate responses.")
+st.write("This is a simple chat application based on OpenAI's Assistants API")
 
 # Only show the chat interface if the chat has been started
 if st.session_state.start_chat:
