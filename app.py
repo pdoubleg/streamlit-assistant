@@ -3,17 +3,13 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import pdfkit
+from weasyprint import HTML
 import time
-import urllib
 
 from openai import OpenAI
 
 # Set up the Streamlit page with a title and icon
 st.set_page_config(page_title="OpenAI Assistant App", page_icon=":speech_balloon:")
-
-# Set your OpenAI Assistant ID here
-# assistant_id = 'asst_6L1ZkOKmETV2Bdpq90eesdtg' # Advanced Data Analytics
-# assistant_id = 'asst_dOJ1xKHvQZMHSGdq0A0kbBJ9' # Policy Guide
 
 # Create a dictionary to map the readable names to the assistant_id
 assistant_dict = {
@@ -28,7 +24,7 @@ if not api_key:
     st.warning('Please input an api key')
     st.stop()
     st.success('Thank you for inputting an api key!')
-# openai.api_key = st.secrets.OPENAI_API_KEY
+
 client = OpenAI(api_key = st.secrets.OPENAI_API_KEY)
 
 # Create a sidebar for Assistant Selection
@@ -45,9 +41,6 @@ st.session_state.prev_assistant = selected_assistant
 
 # Get the assistant_id from the selected assistant
 assistant_id = assistant_dict[selected_assistant]
-
-# Initialize the OpenAI client (ensure to set your API key in the sidebar within the app)
-# client = OpenAI() 
 
 # Initialize session state variables for file IDs and chat control
 if "file_id_list" not in st.session_state:
@@ -68,11 +61,16 @@ def scrape_website(url):
     soup = BeautifulSoup(response.text, "html.parser")
     return soup.get_text()
 
+# def text_to_pdf(text, filename):
+#     """Convert text content to a PDF file."""
+#     path_wkhtmltopdf = 'wkhtmltopdf/bin/wkhtmltopdf.exe'
+#     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+#     pdfkit.from_string(text, filename, configuration=config)
+#     return filename
+
 def text_to_pdf(text, filename):
     """Convert text content to a PDF file."""
-    path_wkhtmltopdf = 'wkhtmltopdf/bin/wkhtmltopdf.exe'
-    config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-    pdfkit.from_string(text, filename, configuration=config)
+    HTML(string=text).write_pdf(filename)
     return filename
 
 def upload_to_openai(filepath):
