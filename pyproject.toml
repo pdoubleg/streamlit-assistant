@@ -11,6 +11,7 @@ openai = "^1.2.0"
 beautifulsoup4 = "^4.10.0"
 requests = "^2.26.0"
 pdfkit = "^0.6.1"
+weasyprint = "^52.5"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
