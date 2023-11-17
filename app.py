@@ -2,7 +2,6 @@ import openai
 import streamlit as st
 from bs4 import BeautifulSoup
 import requests
-import pdfkit
 import html2text
 import io
 import time
@@ -96,14 +95,13 @@ def upload_to_openai(markdown_text):
 
 # Additional features in the sidebar for web scraping and file uploading
 st.sidebar.header("Additional Features")
-website_url = st.sidebar.text_input("Enter a website URL to scrape and organize into a PDF", key="website_url")
+website_url = st.sidebar.text_input("Enter a website URL to scrape", key="website_url")
 
-# Button to scrape a website, convert to PDF, and upload to OpenAI
+# Button to scrape a website and upload to OpenAI
 if st.sidebar.button("Scrape and Upload"):
-    # Scrape, convert, and upload process
+    # Scrape and upload process
     scraped_text = scrape_website(website_url)
-    pdf_path = text_to_pdf(scraped_text, "scraped_content.pdf")
-    file_id = upload_to_openai(pdf_path)
+    file_id = upload_to_openai(scraped_text)
     st.session_state.file_id_list.append(file_id)
     st.sidebar.write(f"File ID: {file_id}")
 

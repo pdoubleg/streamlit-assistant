@@ -1028,18 +1028,6 @@ qa = ["flake8 (==3.8.3)", "mypy (==0.782)"]
 testing = ["docopt", "pytest (<6.0.0)"]
 
 [[package]]
-name = "pdfkit"
-version = "0.6.1"
-description = "Wkhtmltopdf python wrapper to convert html to pdf using the webkit rendering engine and qt"
-optional = false
-python-versions = "*"
-files = [
-    {file = "pdfkit-0.6.1-py2-none-any.whl", hash = "sha256:6a866c9659e62a81abd72cdb32b400762d76085b964beb0b15106d573a539677"},
-    {file = "pdfkit-0.6.1-py3-none-any.whl", hash = "sha256:05f1c631e8d9ab877886955da825e48b459e097886a21448ab17b34c60cfd66c"},
-    {file = "pdfkit-0.6.1.tar.gz", hash = "sha256:ef1da35b78d534197e7ce4a604a4a190e9aa769e56634957535f3479a50d8cd1"},
-]
-
-[[package]]
 name = "pexpect"
 version = "4.8.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -2103,4 +2091,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "e84a8457c78d256e215f2f9d98f75ccf78ac3439dd323ab57a9bfb0349d234fc"
+content-hash = "7f075fccafa53511cc5a7e1148914620b3df245736ca6493d602fde7c4a5f80e"
