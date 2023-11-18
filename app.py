@@ -54,20 +54,6 @@ if "start_chat" not in st.session_state:
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
 
-# Define functions for scraping, converting text to PDF, and uploading to OpenAI
-# def scrape_website(url):
-#     """Scrape text from a website URL."""
-#     response = requests.get(url)
-#     soup = BeautifulSoup(response.text, "html.parser")
-#     return soup.get_text()
-
-# def text_to_pdf(text, filename):
-#     """Convert text content to a PDF file."""
-#     path_wkhtmltopdf = 'wkhtmltopdf/bin/wkhtmltopdf.exe'
-#     config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-#     pdfkit.from_string(text, filename, configuration=config)
-#     return filename
-
 def scrape_website(url):
     """Scrape text from a website URL and convert to markdown."""
     response = requests.get(url)
@@ -75,17 +61,6 @@ def scrape_website(url):
     html_converter.ignore_links = True
     markdown_text = html_converter.handle(response.text)
     return markdown_text
-
-# def text_to_pdf(text, filename):
-#     """Convert text content to a PDF file."""
-#     HTML(string=text).write_pdf(filename)
-#     return filename
-
-# def upload_to_openai(filepath):
-#     """Upload a file to OpenAI and return its file ID."""
-#     with open(filepath, "rb") as file:
-#         response = openai.files.create(file=file.read(), purpose="assistants")
-#     return response.id
 
 def upload_to_openai(markdown_text):
     """Upload a markdown text to OpenAI and return its file ID."""

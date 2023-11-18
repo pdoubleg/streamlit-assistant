@@ -11,6 +11,11 @@ openai = "^1.2.0"
 beautifulsoup4 = "^4.10.0"
 requests = "^2.26.0"
 html2text = "^2020.1.16"
+ffmpeg-python = "^0.2.0"
+langchain = "^0.0.337"
+python-dotenv = "^1.0.0"
+openpyxl = "^3.1.2"
+chromadb = "^0.4.17"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.26.0"
