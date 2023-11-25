@@ -53,6 +53,8 @@ with st.expander(":camera:**Introduction**:camera:"):
 if "analyze_button_clicked" not in st.session_state:
     st.session_state["analyze_button_clicked"] = False
     
+st.session_state["analyze_button_clicked"] = False
+    
 # Initialize session state for last processed message
 if "last_processed_message" not in st.session_state:
     st.session_state["last_processed_message"] = None
