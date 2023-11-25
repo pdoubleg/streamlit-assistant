@@ -5,7 +5,6 @@ import requests
 import html2text
 import io
 import time
-
 from openai import OpenAI
 
 # Set up the Streamlit page with a title and icon
@@ -25,7 +24,7 @@ if not api_key:
     st.stop()
     st.success('Thank you for inputting an api key!')
 
-client = OpenAI(api_key = st.secrets.OPENAI_API_KEY)
+client = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
