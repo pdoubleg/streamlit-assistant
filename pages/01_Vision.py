@@ -38,14 +38,22 @@ if "last_api_key" not in st.session_state:
     
 # Create a sidebar for API key configuration and additional features
 st.sidebar.header("Configuration")
-api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password")
+api_key_ = st.sidebar.text_input(
+    "Enter your OpenAI API key", 
+    type="password",
+    help=f"Get an api key at www.openai.com")
 
-if not api_key_:
-    st.warning('Please input an api key')
+meta_key_ = st.sidebar.text_input(
+    "Enter your Metaphor API key", 
+    type="password",
+    help=f"Get 1k free searches at www.metaphor.systems")
+
+if not api_key_ or not meta_key_:
+    st.warning('Please input api keys')
     st.stop()
     
 if api_key_ and api_key_ != st.session_state["last_api_key"]:
-    st.toast(':+1: Thank you for inputting a new api key!')
+    st.toast("**Thanks!** We're all set now :+1:")
     st.session_state["last_api_key"] = api_key_
 
 lock = st.secrets["SECRET_API_KEY"]
@@ -54,10 +62,10 @@ if api_key_:
 
     if api_key_ == lock:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-        metaphor = Metaphor(st.secrets["METAPHOR_API_KEY"])
+        metaphor = Metaphor(api_key=st.secrets["METAPHOR_API_KEY"])
     else:
         client = OpenAI(api_key=api_key_)
-        metaphor = Metaphor(st.secrets["METAPHOR_API_KEY"])
+        metaphor = Metaphor(api_key=meta_key_)
 
 
     # Function to encode the image to base64
@@ -65,20 +73,24 @@ if api_key_:
         return base64.b64encode(image_file.getvalue()).decode("utf-8")
 
 
-    with st.expander(":camera:**Introduction**:camera:"):
+    with st.expander(":camera:**Introduction**"):
         st.markdown("""
             ## Welcome to Property Image Inspector!
             
-            This app uses the power of GPT-4 Turbo with Vision to inspect and evaluate property images.\n\n 
-            Here's how to use it:
+            This app uses GPT-4 Turbo with Vision to inspect images, and Metaphor API to research the internet.\n\n 
+            Here's how it works:
             
-            1. Upload an image of some property.
-            2. Tell the app if your image contains "Personal Property" or "Structural Items".
-            3. Optionally, add instructions or more info about the image. Change this as much as you'd like!
-            4. Click the 'Analyze the Image' button.
-            5. Wait for the analysis to complete.
-            6. View the results and (optionally) download a PDF report.
-            7. Sit back and think about all the time you just saved :sunglasses:
+            * Upload an image
+            * Tell the app if your image contains "Personal Property", "Structural Items", or a diagram/plot
+            * Optionally:
+              - Add instructions, or more info about the image
+              - Get an audio version of the report
+              - Specify your web search preference
+            * Click the 'Inspect the Image' button to get a
+              - Detailed image analysis
+              - Curated internet content summarized as a research report with citations
+              - Optional PDF report
+            * That's it :sunglasses:
         """)
 
 
@@ -166,6 +178,21 @@ if api_key_:
             st.write(f"Title: {result.title}")
             st.write(f"URL: {result.url}")
             st.write(f"Published Date: {result.published_date}")
+            st.markdown("___")
+            
+            
+    def display_content(content_results):
+        """
+        Display internet content.
+
+        Args:
+            search_results (list): List of search results.
+        """
+        for result in content_results:
+            st.write(f"Title: {result.title}")
+            st.write(f"URL: {result.url}")
+            st.markdown("**Content:**")
+            st.markdown(f"{result.extract}", unsafe_allow_html=True)
             st.markdown("___")
 
 
@@ -390,7 +417,7 @@ if api_key_:
             "Choose the type of web search:",
             ("keyword", "neural"),
             index=0,
-            help="`keyword` runs a standard search - good for specific topics\n\n`neural` predicts interesting links - good when a topic is popularly discussed online"
+            help="`keyword` runs a standard search - good for specific topics\n\n`neural` predicts interesting links - good when a topic is popularly discussed online\n\nLearn more at: https://docs.metaphor.systems/reference/prompting-guide"
         )
 
     # Add a radio button for the prompt type
@@ -537,12 +564,13 @@ if api_key_:
                     
                     st.markdown("___")
 
-                    with st.status("Inspecting the suggested sites...", state='running') as status:
+                    with st.status("Synthesizing internet search results...", state='running') as status:
                         search_result_contents = get_page_contents([link.id for link in search_result_links])
                         internet_content = create_web_content_string(search_result_contents, 30000)
                         full_report = synthesize_report(item_title, internet_content)
                         formatted_content = format_for_markdown(internet_content)
-                        st.markdown(f"{formatted_content}", unsafe_allow_html=True)
+                        html_content = display_content(search_result_contents)
+                        st.markdown(f"{html_content}", unsafe_allow_html=True)
                         status.update(label="Source content")
 
                     # The final report will be displayed outside the container
