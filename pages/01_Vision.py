@@ -1,7 +1,9 @@
 import streamlit as st
 import os
 import io
+import re
 import base64
+import time
 from dotenv import load_dotenv
 load_dotenv()
 import openai
@@ -30,6 +32,10 @@ st.set_page_config(page_title="PropertyImageInspect", layout="centered", initial
 st.title("`πi` | PropertyImageInspector\n\nPowered by: `GPT-4 Turbo with Vision`")
 
 
+# Initialize session state for last API key
+if "last_api_key" not in st.session_state:
+    st.session_state["last_api_key"] = ""
+    
 # Create a sidebar for API key configuration and additional features
 st.sidebar.header("Configuration")
 api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password")
@@ -37,7 +43,10 @@ api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password")
 if not api_key_:
     st.warning('Please input an api key')
     st.stop()
-st.success('Thank you for inputting an api key!')
+    
+if api_key_ and api_key_ != st.session_state["last_api_key"]:
+    st.toast(':+1: Thank you for inputting a new api key!')
+    st.session_state["last_api_key"] = api_key_
 
 lock = st.secrets["SECRET_API_KEY"]
 
@@ -45,9 +54,10 @@ if api_key_:
 
     if api_key_ == lock:
         client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        metaphor = Metaphor(st.secrets["METAPHOR_API_KEY"])
     else:
         client = OpenAI(api_key=api_key_)
-    metaphor = Metaphor(st.secrets["METAPHOR_API_KEY"])
+        metaphor = Metaphor(st.secrets["METAPHOR_API_KEY"])
 
 
     # Function to encode the image to base64
@@ -129,23 +139,129 @@ if api_key_:
         queries = [s for s in completion.split('\n') if s.strip()][:n]
         return queries
 
-    def get_search_results(queries, type, linksPerQuery=1):
+    def get_keyword_search_results(queries, linksPerQuery=1):
         results = []
         for query in queries:
-            search_response = metaphor.search(query, type=type, num_results=linksPerQuery, use_autoprompt=False)
+            search_response = metaphor.search(query, type='keyword', num_results=linksPerQuery, use_autoprompt=False)
             results.extend(search_response.results)
         return results
+    
+    
+    def get_neural_search_results(queries, linksPerQuery=1):
+            results = []
+            for query in queries:
+                search_response = metaphor.search(query, type='neural', num_results=linksPerQuery, use_autoprompt=True)
+                results.extend(search_response.results)
+            return results
+        
 
     def display_search(search_results):
+        """
+        Display the search results.
+
+        Args:
+            search_results (list): List of search results.
+        """
         for result in search_results:
             st.write(f"Title: {result.title}")
             st.write(f"URL: {result.url}")
+            st.write(f"Published Date: {result.published_date}")
             st.markdown("___")
 
 
     def get_page_contents(search_results):
         contents_response = metaphor.get_contents(search_results)
         return contents_response.contents
+    
+
+
+    def clean_html_content(content: str) -> str:
+        """
+        Clean the HTML content using BeautifulSoup.
+
+        Args:
+            content (str): HTML content.
+
+        Returns:
+            str: Cleaned text content.
+        """
+        soup = BeautifulSoup(content, "html.parser")
+
+        # Extract header and paragraph tags
+        header_tags = soup.find_all(re.compile(r"^h\d$"))
+        paragraph_tags = soup.find_all("p")
+
+        # Strip HTML tags and collect text content
+        stripped_content = ""
+        for tag in header_tags + paragraph_tags:
+            stripped_content += " " + tag.get_text().strip() + " "
+
+        return ' '.join(stripped_content.split())
+    
+    
+    def create_web_content_string(search_contents: list, char_limit: int = 9000) -> str:
+        """
+        Build context for LLM call.
+
+        Args:
+            search_contents (list): List of search contents.
+            char_limit (int, optional): Total character limit. Defaults to 9000.
+
+        Returns:
+            str: Processed internet content.
+        """
+        total_chars = sum([len(clean_html_content(item.extract)) for item in search_contents])
+        internet_content = ''
+
+        for item in search_contents:
+            cleaned_content = clean_html_content(item.extract)
+            item_chars = len(cleaned_content)
+            slice_ratio = item_chars / total_chars
+            slice_limit = int(char_limit * slice_ratio)
+            sliced_content = cleaned_content[:slice_limit]
+
+            internet_content += f'--START ITEM--\nURL: {item.url}\nTITLE: {item.title}\nCONTENT: {sliced_content}\n--END ITEM--\n'
+
+        return internet_content
+    
+    
+    def format_for_markdown(text: str) -> str:
+        """
+        Formats the given text for markdown.
+
+        Args:
+            text (str): The text to be formatted.
+
+        Returns:
+            str: The formatted text.
+        """
+        # Split the text into items
+        items = text.split("--END ITEM--")
+        
+        # Process each item
+        formatted_items = []
+        for item in items:
+            if item.strip() == "":
+                continue
+
+            # Remove START ITEM tag and split into lines
+            lines = item.replace("--START ITEM--", "").strip().split(" ")
+
+            # Initialize formatted item
+            formatted_item = "\n\n"
+
+            # Add each line with a newline at the end
+            for line in lines:
+                if "URL:" in line or "TITLE:" in line:
+                    formatted_item += "\n" + line
+                elif "CONTENT:" in line:
+                    formatted_item += "\n" + line + "\n"
+                else:
+                    formatted_item += " " + line
+
+            formatted_items.append(formatted_item.strip())
+
+        return "\n\n".join(formatted_items)
 
     # def synthesize_report(topic, search_contents, content_slice = 3000):
     #     inputData = ''.join([
@@ -158,19 +274,15 @@ if api_key_:
     #         model='gpt-4' # want a better report? use gpt-4
     #     ), inputData
 
-    def synthesize_report(topic, search_contents, content_slice = 10000):
-        content_slice = int(content_slice)
-        inputData = ''.join([
-            f'--START ITEM--\nURL: {item.url}\nCONTENT: {item.extract[:content_slice]}\n--END ITEM--\n'
-            for item in search_contents
-        ])
+    def synthesize_report(topic: str, internet_content: str) -> str:        
         full_report = ""
         for completion in openai.chat.completions.create(
             model='gpt-4-1106-preview',
+            # model='gpt-4',
             temperature=1,
             messages=[
                 {'role': 'system', 'content': 'You are a helpful internet research assistant specializing in empowering buyers. You help sift through raw search results to find the most relevant and interesting findings for user topic of interest.'},
-                {'role': 'user', 'content': 'Input Data:\n' + inputData + f'Write a two paragraph research report about **{topic}** based on the provided search results. One paragraph summarizing the Input Data, and another focusing on the main Research Topic. Include as many sources as possible. Provide citations in the text using footnote notation ([#]). First provide the report, followed by a markdown table of all the URLs used, in the format [#] .'},
+                {'role': 'user', 'content': 'Input Data:\n' + internet_content + f'Write a two paragraph research report about **{topic}** based on the provided search results. One paragraph summarizing the Input Data, and another focusing on the main Research Topic. Include as many sources as possible. ALWAYS cite results using [[number](URL)] notation after the reference. End with a markdown table of all the URLs used. Remember to use markdown links when citing the context, for example [[number](URL)].'},
             ],
             stream=True
         ):
@@ -180,7 +292,7 @@ if api_key_:
                 report_placeholder.markdown(full_report + "▌")
         # Final update to placeholder after the stream ends
         report_placeholder.markdown(full_report)
-        return full_report, inputData
+        return full_report
 
 
     # Generate PDF report with the uploaded image and model output
@@ -246,7 +358,7 @@ if api_key_:
         
 
     # Create two columns for the toggles
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
 
     # Toggle for showing additional details input in the first column
     with col1:
@@ -271,6 +383,15 @@ if api_key_:
                 ("alloy", "echo", "fable", "onyx", "nova", "shimmer"),
                 index=4
             )
+
+    # Radio button for selecting web search type
+    with col3:
+        web_search_type = st.radio(
+            "Choose the type of web search:",
+            ("keyword", "neural"),
+            index=0,
+            help="`keyword` runs a standard search - good for specific topics\n\n`neural` predicts interesting links - good when a topic is popularly discussed online"
+        )
 
     # Add a radio button for the prompt type
     prompt_type = st.radio(
@@ -389,8 +510,8 @@ if api_key_:
                             st.success("Audio is Ready")
                         st.audio(audio_bytes)
                     
-
                     st.markdown("___")
+                    
                     st.markdown("## Internet Research:")
                     
                     item_title = generate_base_query(full_response)         
@@ -402,9 +523,13 @@ if api_key_:
                     st.markdown(f"* {search_queries[2]}")
                     
                     with st.status("Links to suggested research material", state='running') as status:
-                        search_result_links = get_search_results(search_queries, 'keyword', 2)
+                        if web_search_type == 'keyword':
+                            search_result_links = get_keyword_search_results(search_queries, 2)
+                        else:
+                            search_result_links = get_neural_search_results(search_queries, 2)    
                         display_search(search_result_links)
                         status.update()
+                    
                     st.markdown("___")
                 
                     # Define the placeholder for the report outside the container
@@ -414,8 +539,10 @@ if api_key_:
 
                     with st.status("Inspecting the suggested sites...", state='running') as status:
                         search_result_contents = get_page_contents([link.id for link in search_result_links])
-                        full_report, content = synthesize_report(item_title, search_result_contents)
-                        st.markdown(content, unsafe_allow_html=True)
+                        internet_content = create_web_content_string(search_result_contents, 30000)
+                        full_report = synthesize_report(item_title, internet_content)
+                        formatted_content = format_for_markdown(internet_content)
+                        st.markdown(f"{formatted_content}", unsafe_allow_html=True)
                         status.update(label="Source content")
 
                     # The final report will be displayed outside the container
@@ -441,7 +568,7 @@ if api_key_:
                     # Create the PDF
                     st.session_state.pdf_path = "report.pdf"
                     # report_text = str(full_response)
-                    create_pdf(image_path, full_response, full_report, content, st.session_state.pdf_path)
+                    create_pdf(image_path, full_response, full_report, internet_content, st.session_state.pdf_path)
                     st.markdown("___")
                     # Provide the download button
                     with open(st.session_state.pdf_path, "rb") as file:

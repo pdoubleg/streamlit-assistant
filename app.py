@@ -13,18 +13,34 @@ st.set_page_config(page_title="OpenAI Assistant App", page_icon=":speech_balloon
 # Create a dictionary to map the readable names to the assistant_id
 assistant_dict = {
     "Advanced Data Analytics": 'asst_6L1ZkOKmETV2Bdpq90eesdtg',
-    "Policy Guide": 'asst_dOJ1xKHvQZMHSGdq0A0kbBJ9'
+    "Policy Guide": 'asst_dOJ1xKHvQZMHSGdq0A0kbBJ9',
+    "Scattergories Host": "asst_0KwJLc8sNLz2HVwc7yx9T2zt"
 }
 
+# Initialize session state for last API key
+if "last_api_key" not in st.session_state:
+    st.session_state["last_api_key"] = ""
+    
 # Create a sidebar for API key configuration and additional features
 st.sidebar.header("Configuration")
-api_key = st.sidebar.text_input("Enter your OpenAI API key", type="password")
-if not api_key:
+api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password")
+
+if not api_key_:
     st.warning('Please input an api key')
     st.stop()
-    st.success('Thank you for inputting an api key!')
+    
+if api_key_ and api_key_ != st.session_state["last_api_key"]:
+    st.toast(':+1: Thank you for inputting a new api key!')
+    st.session_state["last_api_key"] = api_key_
 
-client = OpenAI(api_key=st.secrets.OPENAI_API_KEY)
+lock = st.secrets["SECRET_API_KEY"]
+
+if api_key_:
+
+    if api_key_ == lock:
+        client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+    else:
+        client = OpenAI(api_key=api_key_)
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
@@ -106,14 +122,12 @@ if st.session_state.file_id_list:
 # Button to start the chat session
 if st.sidebar.button("Start Chat"):
     # Check if files are uploaded before starting chat
-    if st.session_state.file_id_list:
-        st.session_state.start_chat = True
-        # Create a thread once and store its ID in session state
-        thread = client.beta.threads.create()
-        st.session_state.thread_id = thread.id
-        # st.write("thread id: ", thread.id)
-    else:
-        st.sidebar.warning("Please upload at least one file to start the chat.")
+    st.session_state.start_chat = True
+    # Create a thread once and store its ID in session state
+    thread = client.beta.threads.create()
+    st.session_state.thread_id = thread.id
+    # st.write("thread id: ", thread.id)
+
 
 # Define the function to process messages with citations
 def process_message_with_citations(message):
@@ -148,8 +162,8 @@ def process_message_with_citations(message):
     return full_response
 
 # Main chat interface setup
-st.title("OpenAI Assistant")
-st.write("This is a simple chat application based on OpenAI's Assistants API")
+st.title("`OpenAI Assistant`")
+# st.write("This is a simple chat application based on OpenAI's Assistants API")
 
 # Only show the chat interface if the chat has been started
 if st.session_state.start_chat:
@@ -227,6 +241,6 @@ if st.session_state.start_chat:
                     st.markdown(full_response, unsafe_allow_html=True)
 else:
     # Prompt to start the chat
-    st.write("Please upload files and click 'Start Chat' to begin the conversation.")
+    st.write("Please upload files or click 'Start Chat' to begin the conversation.")
     
     
