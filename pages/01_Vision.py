@@ -548,12 +548,15 @@ if api_key_:
                     # The final report will be displayed outside the container
                     report_placeholder.markdown(full_report)
                     
+                    # Strip all URLs from the full_report string
+                    full_report_audio = re.sub(r'http\S+', '', full_report)
+                    
                     if include_audio:
                         with st.spinner(text="Please hold again..."):
                             response_ = client.audio.speech.create(
                                 model="tts-1",
                                 voice=audio_type,
-                                input=full_report,
+                                input=full_report_audio,
                             )
                             response_.stream_to_file("report.mp3")
                             audio_file_ = open('report.mp3', 'rb')
