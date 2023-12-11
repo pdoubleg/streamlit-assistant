@@ -3,19 +3,21 @@ import streamlit as st
 from bs4 import BeautifulSoup
 import requests
 import html2text
+from PIL import Image, ImageEnhance
+import base64
 import io
 import time
+import random
+import string
 from openai import OpenAI
 
 # Set up the Streamlit page with a title and icon
-st.set_page_config(page_title="OpenAI Assistant App", page_icon=":speech_balloon:")
+st.set_page_config(page_title="Scattergories AI Hosted", page_icon=":speech_balloon:", layout="centered")
 
 # Create a dictionary to map the readable names to the assistant_id
 assistant_dict = {
-    "Advanced Data Analytics": 'asst_6L1ZkOKmETV2Bdpq90eesdtg',
-    "Policy Guide": 'asst_dOJ1xKHvQZMHSGdq0A0kbBJ9',
-    "Scattergories Host": "asst_0KwJLc8sNLz2HVwc7yx9T2zt",
-    
+    "Honorable AI BurgunGPT": "asst_GevnO6e0JGfljII2xs4nIdHh",
+    "Scattergories Host": "asst_0KwJLc8sNLz2HVwc7yx9T2zt",  
 }
 
 # Initialize session state for last API key
@@ -23,8 +25,8 @@ if "last_api_key" not in st.session_state:
     st.session_state["last_api_key"] = ""
     
 # Create a sidebar for API key configuration and additional features
-st.sidebar.header("Configuration")
-api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password")
+st.sidebar.header("OpenAI API Key")
+api_key_ = st.sidebar.text_input("Enter your OpenAI API key", type="password", label_visibility="collapsed")
 
 if not api_key_:
     st.warning('Please input an api key')
@@ -45,7 +47,7 @@ if api_key_:
 
 # Create a sidebar for Assistant Selection
 st.sidebar.header("Assistant Selection")
-selected_assistant = st.sidebar.selectbox("Select an Assistant", list(assistant_dict.keys()), key='assistant')
+selected_assistant = st.sidebar.selectbox("Select an Assistant", list(assistant_dict.keys()), key='assistant', label_visibility="collapsed")
 
 # Check if the selected assistant has changed
 if "prev_assistant" in st.session_state and st.session_state.prev_assistant != selected_assistant:
@@ -58,6 +60,49 @@ st.session_state.prev_assistant = selected_assistant
 # Get the assistant_id from the selected assistant
 assistant_id = assistant_dict[selected_assistant]
 
+st.sidebar.markdown("---")
+st.sidebar.markdown("---")
+st.sidebar.markdown("---")
+
+# Inject custom CSS for grey-black fade border effect
+st.markdown(
+    """
+    <style>
+    .cover-glow {
+        width: 100%;
+        height: auto;
+        padding: 3px;
+        box-shadow: 
+            0 0 5px #000000,
+            0 0 10px #111111,
+            0 0 15px #222222,
+            0 0 20px #333333,
+            0 0 25px #444444,
+            0 0 30px #555555,
+            0 0 35px #666666;
+        position: relative;
+        z-index: -1;
+        border-radius: 30px;  /* Rounded corners */
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+@st.cache_data
+def img_to_base64(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+# Load and display sidebar image with glowing effect
+img_path = "./images/ai_burgungpt.png"
+img_base64 = img_to_base64(img_path)
+st.sidebar.markdown(
+    f'<img src="data:image/png;base64,{img_base64}" class="cover-glow">',
+    unsafe_allow_html=True,
+)
+st.sidebar.markdown("---")
+
 # Initialize session state variables for file IDs and chat control
 if "file_id_list" not in st.session_state:
     file_list = client.beta.assistants.files.list(assistant_id=assistant_id)
@@ -69,66 +114,54 @@ if "start_chat" not in st.session_state:
 
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = None
+    
+if "letter" not in st.session_state:
+    st.session_state.letter = None
+    
+def generate_random_letter():
+    allowed_letters = [letter for letter in string.ascii_uppercase if letter not in ["Q", "U", "V", "X", "Y", "Z"]]
+    return random.choice(allowed_letters)
 
-def scrape_website(url):
-    """Scrape text from a website URL and convert to markdown."""
-    response = requests.get(url)
-    html_converter = html2text.HTML2Text()
-    html_converter.ignore_links = True
-    markdown_text = html_converter.handle(response.text)
-    return markdown_text
+def count_down(ts):
+    with st.empty():
+        while ts:
+            mins, secs = divmod(ts, 60)
+            time_now = '{:02d}:{:02d}'.format(mins, secs)
+            st.markdown(f"<h1 style='text-align: center; font-weight: bold; font-size: 150;'>{time_now}</h1>", unsafe_allow_html=True)
+            # st.markdown(f"{time_now}")
+            time.sleep(1)
+            ts -= 1
+        # st.markdown("TIME UP!")
+        st.markdown(f"<h1 style='text-align: center; font-weight: bold; font-size: 150;'>TIME UP!</h1>", unsafe_allow_html=True)
 
-def upload_to_openai(markdown_text):
-    """Upload a markdown text to OpenAI and return its file ID."""
-    bytes_like_object = io.BytesIO(markdown_text.encode('utf-8'))
-    response = openai.files.create(file=bytes_like_object.read(), purpose="assistants")
-    return response.id
-
-# Additional features in the sidebar for web scraping and file uploading
-st.sidebar.header("Additional Features")
-website_url = st.sidebar.text_input("Enter a website URL to scrape", key="website_url")
-
-# Button to scrape a website and upload to OpenAI
-if st.sidebar.button("Scrape and Upload"):
-    # Scrape and upload process
-    scraped_text = scrape_website(website_url)
-    file_id = upload_to_openai(scraped_text)
-    st.session_state.file_id_list.append(file_id)
-    st.sidebar.write(f"File ID: {file_id}")
-
-# Sidebar option for users to upload their own files
-uploaded_file = st.sidebar.file_uploader("Upload a file to OpenAI", key="file_uploader")
-
-# Button to upload a user's file and store the file ID
-if st.sidebar.button("Upload File"):
-    # Upload file provided by user
-    if uploaded_file:
-        with open(f"{uploaded_file.name}", "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        additional_file_id = upload_to_openai(f"{uploaded_file.name}")
-        st.session_state.file_id_list.append(additional_file_id)
-        st.sidebar.write(f"Additional File ID: {additional_file_id}")
-
-# Display all file IDs
-if st.session_state.file_id_list:
-    st.sidebar.write("Uploaded File IDs:")
-    for file_id in st.session_state.file_id_list:
-        st.sidebar.write(file_id)
-        # Associate files with the assistant
-        assistant_file = client.beta.assistants.files.create(
-            assistant_id=assistant_id, 
-            file_id=file_id
-        )
+def timer():
+    time_minutes = st.number_input('Enter the time in minutes ', min_value=1, max_value=5, value=2)
+    time_in_seconds = time_minutes * 60
+    if st.button("START TIMER", use_container_width=True):
+        count_down(int(time_in_seconds))
+        st.snow()
 
 # Button to start the chat session
-if st.sidebar.button("Start Chat"):
+if st.sidebar.button("Start Game", use_container_width=True, type="primary"):
     # Check if files are uploaded before starting chat
     st.session_state.start_chat = True
     # Create a thread once and store its ID in session state
     thread = client.beta.threads.create()
     st.session_state.thread_id = thread.id
     # st.write("thread id: ", thread.id)
+    
+if st.sidebar.button("Random Letter Generator", use_container_width=True) or not st.session_state.get('letter'):
+    letter = generate_random_letter()
+    st.session_state.letter = letter
 
+st.sidebar.markdown(f"<h1 style='text-align: center; font-weight: bold; font-size: 100px;'>{st.session_state.letter}</h1>", unsafe_allow_html=True)
+
+st.sidebar.markdown("---")
+
+with st.sidebar:
+    timer()
+
+st.sidebar.markdown("---")
 
 # Define the function to process messages with citations
 def process_message_with_citations(message):
@@ -163,8 +196,8 @@ def process_message_with_citations(message):
     return full_response
 
 # Main chat interface setup
-st.title("`OpenAI Assistant`")
-# st.write("This is a simple chat application based on OpenAI's Assistants API")
+st.title("`Scattergories | AI Edition`")
+st.markdown("_Hosted by:_ **`The Honorable AI BurgunGPT`**")
 
 # Only show the chat interface if the chat has been started
 if st.session_state.start_chat:
@@ -176,7 +209,7 @@ if st.session_state.start_chat:
 
     # Display existing messages in the chat
     for message in st.session_state.messages:
-        avatar_path = "./images/stuser.png" if message["role"] == "user" else "./images/stbot.png"
+        avatar_path = "./images/stuser.png" if message["role"] == "user" else "./images/ai_burgungpt.png"
         with st.chat_message(message["role"], avatar=avatar_path):
             if "image_data" in message:
                 st.image(message["image_data"])
@@ -228,7 +261,7 @@ if st.session_state.start_chat:
 
         for message in assistant_messages_for_run:
             full_response = process_message_with_citations(message)
-            with st.chat_message("assistant", avatar="./images/stbot.png"):
+            with st.chat_message("assistant", avatar="./images/ai_burgungpt.png"):
                 try:
                     # Check if the message is an image
                     if isinstance(full_response, bytes):
@@ -242,6 +275,6 @@ if st.session_state.start_chat:
                     st.markdown(full_response, unsafe_allow_html=True)
 else:
     # Prompt to start the chat
-    st.write("Please upload files or click 'Start Chat' to begin the conversation.")
+    st.write("Click 'Start Game' to begin!")
     
     
