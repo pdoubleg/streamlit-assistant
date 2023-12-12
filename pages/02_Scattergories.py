@@ -139,7 +139,7 @@ def timer():
     time_in_seconds = time_minutes * 60
     if st.button("START TIMER", use_container_width=True):
         count_down(int(time_in_seconds))
-        st.snow()
+        st.balloons()
 
 # Button to start the chat session
 if st.sidebar.button("Start Game", use_container_width=True, type="primary"):
@@ -234,12 +234,11 @@ if st.session_state.start_chat:
         run = client.beta.threads.runs.create(
             thread_id=st.session_state.thread_id,
             assistant_id=assistant_id,
-            # instructions="Please answer the queries using the knowledge provided in the files. When writing code always display it for the user."
         )
 
         # Poll for the run to complete and retrieve the assistant's messages
         while run.status != 'completed':
-            time.sleep(1)
+            time.sleep(0.5)
             run = client.beta.threads.runs.retrieve(
                 thread_id=st.session_state.thread_id,
                 run_id=run.id
